@@ -74,7 +74,7 @@ pub mod api {
         /// If we received 400 Bad Request, the username is already taken.
         ///
         /// We expect HTTP 200/Ok and bunch of user info (such as id or hashed password).
-        pub fn register_new_user(
+        pub fn register(
             email: &str,
             username: &str,
             password: &str,
@@ -88,6 +88,8 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
+                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
+                .danger_accept_invalid_certs(true)
                 .build()?;
 
             // Send POST request with email field only
@@ -139,6 +141,8 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
+                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
+                .danger_accept_invalid_certs(true)
                 .build()?;
 
             // Send PATCH request with specified access token and credentials
@@ -192,6 +196,8 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
+                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
+                .danger_accept_invalid_certs(true)
                 .build()?;
 
             // Send POST request with email field only
@@ -237,6 +243,8 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
+                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
+                .danger_accept_invalid_certs(true)
                 .build()?;
 
             Ok(AIDungeon {
@@ -245,7 +253,7 @@ pub mod api {
             })
         }
 
-        pub fn start_custom_story(&mut self, custom_prompt: &str) -> Result<(), AIDungeonError> {
+        pub fn start_custom_story(&mut self, custom_prompt: &str) -> Result<Vec<StoryText>, AIDungeonError> {
             let mut user_input_reply: reqwest::Response = self.http_client
                 .post(URI_NEW_SESSION)
                 .json(&StartOptions{
@@ -268,7 +276,7 @@ pub mod api {
 
             self.story_id = Some(response.id);
 
-            Ok(())
+            Ok(response.story)
         }
 
         /// Send text prompt to currently running story.
@@ -285,7 +293,7 @@ pub mod api {
                 })
                 .send()?;
 
-            let mut response: ListOfStoryTexts;
+            let mut response: Vec<StoryText>;
             match user_input_reply.status() {
                 reqwest::StatusCode::OK => {
                     response = user_input_reply.json()?;
@@ -295,7 +303,7 @@ pub mod api {
                 }
             }
 
-            Ok(response.texts)
+            Ok(response)
         }
     }
 }

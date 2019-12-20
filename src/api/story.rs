@@ -21,7 +21,7 @@ pub struct ListOfStoryTexts {
     pub texts: Vec<StoryText>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct StoryText {
     /// Type of value. Known values: "input", "output"
     #[serde(rename = "type")]
