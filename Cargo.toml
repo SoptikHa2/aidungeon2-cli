@@ -3,7 +3,18 @@ name = "aidungeon2-cli"
 version = "0.1.0"
 authors = ["Petr Šťastný <petr.stastny01@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/SoptikHa2/aidungeon2-cli"
+documentation = "https://github.com/SoptikHa2/aidungeon2-cli"
+description = "Library + binary executable to interact with AI Dungeons 2 mobile API"
+license = "MIT"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "aidungeon2-cli"
+path = "src/cli.rs"
+
+[lib]
+name = "aidungeon2_api"
+test = true
 
 [dependencies]
+http = "0.2.0"
