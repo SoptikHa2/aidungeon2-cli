@@ -150,7 +150,12 @@ pub mod api {
                 }
             }
 
-            unimplemented!();
+            // Return prepared client with correct access token
+            Ok(
+                AIDungeon {
+                    http_client: client
+                }
+            )
         }
     }
 }
