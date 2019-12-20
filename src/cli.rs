@@ -1,3 +1,4 @@
+use aidungeon2_api::AIDungeon;
+
 fn main() {
-    println!("Hello, world!");
 }
