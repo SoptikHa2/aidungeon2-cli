@@ -14,7 +14,6 @@ path = "src/cli.rs"
 
 [lib]
 name = "aidungeon2_api"
-test = true
 
 [dependencies]
 http = "0.2.0"
