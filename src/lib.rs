@@ -1,4 +1,5 @@
 pub mod api {
+    use http;
     use reqwest::header;
     use serde::{Deserialize, Serialize};
     use serde_json::from_str;
@@ -7,6 +8,7 @@ pub mod api {
     use user::*;
 
     const URI_USERINFO: &str = "https://api.aidungeon.io/users";
+    const URI_REGISTERUSER: &str = "https://api.aidungeon.io/users/@me";
     const USERAGENT: &str = "soptikha2/aidungeon2-cli";
 
     /// This remembers runtime stuff
@@ -14,12 +16,12 @@ pub mod api {
     ///
     /// Use this to interact with AI Dungeons 2 API
     pub struct AIDungeon {
-        /// Access token required to access the API
-        ///
-        /// This is obtained after login or registration
-        access_token: String,
+        /// Http client used to make requests.
+        /// Already contains all necessary headers.
+        http_client: reqwest::Client,
     }
 
+    #[derive(Debug)]
     pub enum AIDungeonAuthError {
         UserAlreadyExists,
         InvalidPassword,
@@ -29,6 +31,14 @@ pub mod api {
     impl From<reqwest::Error> for AIDungeonAuthError {
         fn from(err: reqwest::Error) -> Self {
             AIDungeonAuthError::RequestFailed(err)
+        }
+    }
+    impl From<http::header::InvalidHeaderValue> for AIDungeonAuthError {
+        fn from(err: http::header::InvalidHeaderValue) -> Self {
+            AIDungeonAuthError::UnexpectedError(format!(
+                "Received invalid data when trying to register: {}",
+                err
+            ))
         }
     }
 
@@ -59,7 +69,7 @@ pub mod api {
                 header::HeaderValue::from_static(USERAGENT),
             );
 
-            let client = reqwest::Client::builder()
+            let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
                 .build()?;
@@ -68,8 +78,9 @@ pub mod api {
             let mut does_user_exist_response: reqwest::Response = client
                 .post(URI_USERINFO)
                 .json(&UserAuth {
-                    email: email,
+                    email: Some(email),
                     password: None,
+                    username: None,
                 })
                 .send()?;
 
@@ -86,6 +97,55 @@ pub mod api {
                     return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
                         "Bad request status code while checking whether user account exists: {}",
                         does_user_exist_response.status()
+                    ))));
+                }
+            }
+
+            // Now we know user doesn't exist. So we can register it
+            
+            // Construct new client with access token in it
+            let mut headers = header::HeaderMap::new();
+            headers.append(
+                header::USER_AGENT,
+                header::HeaderValue::from_static(USERAGENT),
+            );
+            {
+                let header_value_access_token = header::HeaderValue::from_str(&user.accessToken);
+                if let Ok(access_token) = header_value_access_token {
+                    headers.append(
+                        "x-access-token",
+                        access_token
+                    );
+                }else {
+                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                        "Bad access token received from server while registering new user: {}",
+                        header_value_access_token.unwrap_err()
+                    ))));
+                }
+            }
+            let client: reqwest::Client = reqwest::Client::builder()
+                .gzip(true)
+                .default_headers(headers)
+                .build()?;
+
+
+            // Send PATCH request with specified access token and credentials
+            let mut user_register_reponse = client.patch(URI_REGISTERUSER)
+                .json(&UserAuth {
+                    email: None,
+                    username: Some(username),
+                    password: Some(password),
+                })
+                .send()?;
+            
+            match user_register_reponse.status() {
+                reqwest::StatusCode::OK => {
+                    user = user_register_reponse.json()?;
+                }
+                _ => {
+                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                        "Bad request status code while checking whether user account exists: {}",
+                        user_register_reponse.status()
                     ))));
                 }
             }
