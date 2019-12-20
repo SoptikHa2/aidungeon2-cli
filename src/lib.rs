@@ -8,11 +8,14 @@ pub mod api {
     use user::*;
     mod story;
     use story::*;
+    mod startOptions;
+    use startOptions::*;
 
     const URI_USERINFO: &str = "https://api.aidungeon.io/users";
     const URI_REGISTERUSER: &str = "https://api.aidungeon.io/users/@me";
     const URI_NEW_SESSION: &str = "https://api.aidungeon.io/sessions";
     const URI_CURRENT_SESSION: &str = "https://api.aidungeon.io/sessions/[SESSIONID]/inputs";
+    const URI_START_OPTIONS: &str = "https://api.aidungeon.io/sessions/*/config";
     const USERAGENT: &str = "soptikha2/aidungeon2-cli";
 
     /// This remembers runtime stuff
@@ -23,6 +26,7 @@ pub mod api {
         /// Http client used to make requests.
         /// Already contains all necessary headers.
         http_client: reqwest::Client,
+        story_id: Option<u64>,
     }
 
     #[derive(Debug)]
@@ -165,6 +169,7 @@ pub mod api {
             // Return prepared client with correct access token
             Ok(AIDungeon {
                 http_client: client,
+                story_id: None
             })
         }
 
@@ -235,15 +240,46 @@ pub mod api {
                 .build()?;
 
             Ok(AIDungeon {
-                http_client: client
+                http_client: client,
+                story_id: None,
             })
+        }
+
+        pub fn start_custom_story(&mut self, custom_prompt: &str) -> Result<(), AIDungeonError> {
+            let mut user_input_reply: reqwest::Response = self.http_client
+                .post(URI_NEW_SESSION)
+                .json(&StartOptions{
+                    characterType: None,
+                    customPrompt: custom_prompt,
+                    name: None,
+                    storyMode: "custom"
+                })
+                .send()?;
+
+            let mut response: Story;
+            match user_input_reply.status() {
+                reqwest::StatusCode::OK => {
+                    response = user_input_reply.json()?;
+                }
+                _ => {
+                    return Err(AIDungeonError::UnexpectedError(format!("Unexpected status code while sending reply: {}", user_input_reply.status())));
+                }
+            }
+
+            self.story_id = Some(response.id);
+
+            Ok(())
         }
 
         /// Send text prompt to currently running story.
         /// This returns full story text
-        pub fn send_reply<'a>(&self, text: &str, story_id: u64) -> Result<Vec<StoryText<'a>>, AIDungeonError> {
+        pub fn send_reply<'a>(&self, text: &str) -> Result<Vec<StoryText>, AIDungeonError> {
+            if self.story_id.is_none() {
+                return Err(AIDungeonError::UnexpectedError(String::from("There is no running story, but tried to send reply.")));
+            }
+
             let mut user_input_reply: reqwest::Response = self.http_client
-                .post(&URI_CURRENT_SESSION.replace("[SESSIONID]", &story_id.to_string()))
+                .post(&URI_CURRENT_SESSION.replace("[SESSIONID]", &self.story_id.unwrap().to_string()))
                 .json(&StoryTextInput{
                     text
                 })
