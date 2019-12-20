@@ -24,8 +24,10 @@ pub mod api {
     #[derive(Debug)]
     pub enum AIDungeonAuthError {
         UserAlreadyExists,
+        InvalidUsername,
         InvalidPassword,
         RequestFailed(reqwest::Error),
+        InvalidResponseFromServer(serde_json::error::Error),
         UnexpectedError(String),
     }
     impl From<reqwest::Error> for AIDungeonAuthError {
@@ -39,6 +41,11 @@ pub mod api {
                 "Received invalid data when trying to register: {}",
                 err
             ))
+        }
+    }
+    impl From<serde_json::error::Error> for AIDungeonAuthError {
+        fn from(err: serde_json::error::Error) -> Self {
+            AIDungeonAuthError::InvalidResponseFromServer(err)
         }
     }
 
@@ -56,6 +63,7 @@ pub mod api {
         /// From now on, we will use header `x-access-token` with access token provided by the API.
         /// We send PATCH request to https://api.aidungeon.io/users/@me with JSON contining two fields,
         /// username and password.
+        /// If we received 400 Bad Request, the username is already taken.
         ///
         /// We expect HTTP 200/Ok and bunch of user info (such as id or hashed password).
         pub fn register_new_user(
@@ -77,10 +85,8 @@ pub mod api {
             // Send POST request with email field only
             let mut does_user_exist_response: reqwest::Response = client
                 .post(URI_USERINFO)
-                .json(&UserAuth {
-                    email: Some(email),
-                    password: None,
-                    username: None,
+                .json(&UserAuthCheckIfExists {
+                    email,
                 })
                 .send()?;
 
@@ -102,7 +108,7 @@ pub mod api {
             }
 
             // Now we know user doesn't exist. So we can register it
-            
+
             // Construct new client with access token in it
             let mut headers = header::HeaderMap::new();
             headers.append(
@@ -112,11 +118,8 @@ pub mod api {
             {
                 let header_value_access_token = header::HeaderValue::from_str(&user.accessToken);
                 if let Ok(access_token) = header_value_access_token {
-                    headers.append(
-                        "x-access-token",
-                        access_token
-                    );
-                }else {
+                    headers.append("x-access-token", access_token);
+                } else {
                     return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
                         "Bad access token received from server while registering new user: {}",
                         header_value_access_token.unwrap_err()
@@ -128,34 +131,34 @@ pub mod api {
                 .default_headers(headers)
                 .build()?;
 
-
             // Send PATCH request with specified access token and credentials
-            let mut user_register_reponse = client.patch(URI_REGISTERUSER)
-                .json(&UserAuth {
-                    email: None,
-                    username: Some(username),
-                    password: Some(password),
+            let mut user_register_reponse = client
+                .patch(URI_REGISTERUSER)
+                .json(&UserAuthRegister {
+                    username,
+                    password,
                 })
                 .send()?;
-            
+
             match user_register_reponse.status() {
                 reqwest::StatusCode::OK => {
                     user = user_register_reponse.json()?;
                 }
+                reqwest::StatusCode::BAD_REQUEST => {
+                    return Err(AIDungeonAuthError::InvalidUsername);
+                }
                 _ => {
                     return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
-                        "Bad request status code while checking whether user account exists: {}",
+                        "Bad request status code while trying to register user: {}",
                         user_register_reponse.status()
                     ))));
                 }
             }
 
             // Return prepared client with correct access token
-            Ok(
-                AIDungeon {
-                    http_client: client
-                }
-            )
+            Ok(AIDungeon {
+                http_client: client,
+            })
         }
     }
 }
