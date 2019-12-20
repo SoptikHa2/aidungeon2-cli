@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Use as is sent from API
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct User {
     pub accessToken: String,
     pub createdAt: String,
@@ -17,7 +17,7 @@ pub struct User {
 }
 
 /// Send this to authenticate to API
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 pub struct UserAuth<'a> {
     pub email: Option<&'a str>,
     pub password: Option<&'a str>,

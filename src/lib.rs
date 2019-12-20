@@ -6,9 +6,13 @@ pub mod api {
 
     mod user;
     use user::*;
+    mod story;
+    use story::*;
 
     const URI_USERINFO: &str = "https://api.aidungeon.io/users";
     const URI_REGISTERUSER: &str = "https://api.aidungeon.io/users/@me";
+    const URI_NEW_SESSION: &str = "https://api.aidungeon.io/sessions";
+    const URI_CURRENT_SESSION: &str = "https://api.aidungeon.io/sessions/[SESSIONID]/inputs";
     const USERAGENT: &str = "soptikha2/aidungeon2-cli";
 
     /// This remembers runtime stuff
@@ -22,7 +26,7 @@ pub mod api {
     }
 
     #[derive(Debug)]
-    pub enum AIDungeonAuthError {
+    pub enum AIDungeonError {
         EmailAlreadyExists,
         UsernameAlreadyExists,
         InvalidPassword,
@@ -30,22 +34,22 @@ pub mod api {
         InvalidResponseFromServer(serde_json::error::Error),
         UnexpectedError(String),
     }
-    impl From<reqwest::Error> for AIDungeonAuthError {
+    impl From<reqwest::Error> for AIDungeonError {
         fn from(err: reqwest::Error) -> Self {
-            AIDungeonAuthError::RequestFailed(err)
+            AIDungeonError::RequestFailed(err)
         }
     }
-    impl From<http::header::InvalidHeaderValue> for AIDungeonAuthError {
+    impl From<http::header::InvalidHeaderValue> for AIDungeonError {
         fn from(err: http::header::InvalidHeaderValue) -> Self {
-            AIDungeonAuthError::UnexpectedError(format!(
+            AIDungeonError::UnexpectedError(format!(
                 "Received invalid data when trying to register: {}",
                 err
             ))
         }
     }
-    impl From<serde_json::error::Error> for AIDungeonAuthError {
+    impl From<serde_json::error::Error> for AIDungeonError {
         fn from(err: serde_json::error::Error) -> Self {
-            AIDungeonAuthError::InvalidResponseFromServer(err)
+            AIDungeonError::InvalidResponseFromServer(err)
         }
     }
 
@@ -70,7 +74,7 @@ pub mod api {
             email: &str,
             username: &str,
             password: &str,
-        ) -> Result<AIDungeon, AIDungeonAuthError> {// Construct new client with access token in it
+        ) -> Result<AIDungeon, AIDungeonError> {// Construct new client with access token in it
             let mut headers = header::HeaderMap::new();
             headers.append(
                 header::USER_AGENT,
@@ -96,13 +100,13 @@ pub mod api {
             match does_user_exist_response.status() {
                 reqwest::StatusCode::NOT_ACCEPTABLE => {
                     // User already exists
-                    return Err(AIDungeonAuthError::EmailAlreadyExists);
+                    return Err(AIDungeonError::EmailAlreadyExists);
                 }
                 reqwest::StatusCode::OK => {
                     user = does_user_exist_response.json()?;
                 }
                 _ => {
-                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                    return Err(AIDungeonError::UnexpectedError(String::from(format!(
                         "Bad request status code while checking whether user account exists: {}",
                         does_user_exist_response.status()
                     ))));
@@ -122,7 +126,7 @@ pub mod api {
                 if let Ok(access_token) = header_value_access_token {
                     headers.append("x-access-token", access_token);
                 } else {
-                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                    return Err(AIDungeonError::UnexpectedError(String::from(format!(
                         "Bad access token received from server while registering new user: {}",
                         header_value_access_token.unwrap_err()
                     ))));
@@ -148,10 +152,10 @@ pub mod api {
                     user = user_register_reponse.json()?;
                 }
                 reqwest::StatusCode::BAD_REQUEST => {
-                    return Err(AIDungeonAuthError::UsernameAlreadyExists);
+                    return Err(AIDungeonError::UsernameAlreadyExists);
                 }
                 _ => {
-                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                    return Err(AIDungeonError::UnexpectedError(String::from(format!(
                         "Bad request status code while trying to register user: {}",
                         user_register_reponse.status()
                     ))));
@@ -173,7 +177,7 @@ pub mod api {
         pub fn login(
             email: &str,
             password: &str
-        ) -> Result<AIDungeon, AIDungeonAuthError> {
+        ) -> Result<AIDungeon, AIDungeonError> {
             let mut headers = header::HeaderMap::new();
             headers.append(
                 header::USER_AGENT,
@@ -201,7 +205,7 @@ pub mod api {
                     user = does_user_exist_response.json()?;
                 }
                 _ => {
-                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                    return Err(AIDungeonError::UnexpectedError(String::from(format!(
                         "Bad request status code while trying to log in: {}",
                         does_user_exist_response.status()
                     ))));
@@ -219,7 +223,7 @@ pub mod api {
                 if let Ok(access_token) = header_value_access_token {
                     headers.append("x-access-token", access_token);
                 } else {
-                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                    return Err(AIDungeonError::UnexpectedError(String::from(format!(
                         "Bad access token received from server while registering new user: {}",
                         header_value_access_token.unwrap_err()
                     ))));
@@ -233,6 +237,29 @@ pub mod api {
             Ok(AIDungeon {
                 http_client: client
             })
+        }
+
+        /// Send text prompt to currently running story.
+        /// This returns full story text
+        pub fn send_reply<'a>(&self, text: &str, story_id: u64) -> Result<Vec<StoryText<'a>>, AIDungeonError> {
+            let mut user_input_reply: reqwest::Response = self.http_client
+                .post(&URI_CURRENT_SESSION.replace("[SESSIONID]", &story_id.to_string()))
+                .json(&StoryTextInput{
+                    text
+                })
+                .send()?;
+
+            let mut response: ListOfStoryTexts;
+            match user_input_reply.status() {
+                reqwest::StatusCode::OK => {
+                    response = user_input_reply.json()?;
+                }
+                _ => {
+                    return Err(AIDungeonError::UnexpectedError(format!("Unexpected status code while sending reply: {}", user_input_reply.status())));
+                }
+            }
+
+            Ok(response.texts)
         }
     }
 }
