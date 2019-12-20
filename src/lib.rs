@@ -23,8 +23,8 @@ pub mod api {
 
     #[derive(Debug)]
     pub enum AIDungeonAuthError {
-        UserAlreadyExists,
-        InvalidUsername,
+        EmailAlreadyExists,
+        UsernameAlreadyExists,
         InvalidPassword,
         RequestFailed(reqwest::Error),
         InvalidResponseFromServer(serde_json::error::Error),
@@ -85,8 +85,10 @@ pub mod api {
             // Send POST request with email field only
             let mut does_user_exist_response: reqwest::Response = client
                 .post(URI_USERINFO)
-                .json(&UserAuthCheckIfExists {
-                    email,
+                .json(&UserAuth {
+                    email: Some(email),
+                    username: None,
+                    password: None,
                 })
                 .send()?;
 
@@ -94,7 +96,7 @@ pub mod api {
             match does_user_exist_response.status() {
                 reqwest::StatusCode::NOT_ACCEPTABLE => {
                     // User already exists
-                    return Err(AIDungeonAuthError::UserAlreadyExists);
+                    return Err(AIDungeonAuthError::EmailAlreadyExists);
                 }
                 reqwest::StatusCode::OK => {
                     user = does_user_exist_response.json()?;
@@ -134,9 +136,10 @@ pub mod api {
             // Send PATCH request with specified access token and credentials
             let mut user_register_reponse = client
                 .patch(URI_REGISTERUSER)
-                .json(&UserAuthRegister {
-                    username,
-                    password,
+                .json(&UserAuth {
+                    username: Some(username),
+                    password: Some(password),
+                    email: None
                 })
                 .send()?;
 
@@ -145,7 +148,7 @@ pub mod api {
                     user = user_register_reponse.json()?;
                 }
                 reqwest::StatusCode::BAD_REQUEST => {
-                    return Err(AIDungeonAuthError::InvalidUsername);
+                    return Err(AIDungeonAuthError::UsernameAlreadyExists);
                 }
                 _ => {
                     return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(

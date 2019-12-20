@@ -2,7 +2,7 @@ use aidungeon2_api::api::{AIDungeon, AIDungeonAuthError};
 
 fn main() {
     let output: Result<AIDungeon, AIDungeonAuthError> =
-        AIDungeon::register_new_user("existing.email@gmail.com", "username-23781297846138647617", "1234");
+        AIDungeon::register_new_user("existing.email.2@gmail.com", "username-2378129784613864761", "1234");
     if let Ok(dungeon) = output {
         println!("User registered.");
     } else {

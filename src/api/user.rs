@@ -18,13 +18,8 @@ pub struct User {
 
 /// Send this to authenticate to API
 #[derive(Serialize, Deserialize)]
-pub struct UserAuthCheckIfExists<'a> {
-    pub email: &'a str,
-}
-
-/// Send this to authenticate to API
-#[derive(Serialize, Deserialize)]
-pub struct UserAuthRegister<'a> {
-    pub password: &'a str,
-    pub username: &'a str,
+pub struct UserAuth<'a> {
+    pub email: Option<&'a str>,
+    pub password: Option<&'a str>,
+    pub username: Option<&'a str>,
 }
