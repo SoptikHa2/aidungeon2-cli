@@ -1,4 +1,3 @@
-use aidungeon2_api::AIDungeon;
+use aidungeon2_api::api::AIDungeon;
 
-fn main() {
-}
+fn main() {}
