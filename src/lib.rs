@@ -70,7 +70,7 @@ pub mod api {
             email: &str,
             username: &str,
             password: &str,
-        ) -> Result<AIDungeon, AIDungeonAuthError> {
+        ) -> Result<AIDungeon, AIDungeonAuthError> {// Construct new client with access token in it
             let mut headers = header::HeaderMap::new();
             headers.append(
                 header::USER_AGENT,
@@ -161,6 +161,77 @@ pub mod api {
             // Return prepared client with correct access token
             Ok(AIDungeon {
                 http_client: client,
+            })
+        }
+
+        /// Login with existing user account
+        /// 
+        /// Send POST request to https://api.aidungeon/users
+        /// This will contain JSON with email and password.
+        /// 
+        /// We expect to receive access token together with other various user info (and status code 200/OK).
+        pub fn login(
+            email: &str,
+            password: &str
+        ) -> Result<AIDungeon, AIDungeonAuthError> {
+            let mut headers = header::HeaderMap::new();
+            headers.append(
+                header::USER_AGENT,
+                header::HeaderValue::from_static(USERAGENT),
+            );
+
+            let client: reqwest::Client = reqwest::Client::builder()
+                .gzip(true)
+                .default_headers(headers)
+                .build()?;
+
+            // Send POST request with email field only
+            let mut does_user_exist_response: reqwest::Response = client
+                .post(URI_USERINFO)
+                .json(&UserAuth {
+                    email: Some(email),
+                    password: Some(password),
+                    username: None,
+                })
+                .send()?;
+
+            let mut user: User;
+            match does_user_exist_response.status() {
+                reqwest::StatusCode::OK => {
+                    user = does_user_exist_response.json()?;
+                }
+                _ => {
+                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                        "Bad request status code while trying to log in: {}",
+                        does_user_exist_response.status()
+                    ))));
+                }
+            }
+
+            // Construct new client with access token in it
+            let mut headers = header::HeaderMap::new();
+            headers.append(
+                header::USER_AGENT,
+                header::HeaderValue::from_static(USERAGENT),
+            );
+            {
+                let header_value_access_token = header::HeaderValue::from_str(&user.accessToken);
+                if let Ok(access_token) = header_value_access_token {
+                    headers.append("x-access-token", access_token);
+                } else {
+                    return Err(AIDungeonAuthError::UnexpectedError(String::from(format!(
+                        "Bad access token received from server while registering new user: {}",
+                        header_value_access_token.unwrap_err()
+                    ))));
+                }
+            }
+            let client: reqwest::Client = reqwest::Client::builder()
+                .gzip(true)
+                .default_headers(headers)
+                .build()?;
+
+            Ok(AIDungeon {
+                http_client: client
             })
         }
     }
