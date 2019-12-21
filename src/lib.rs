@@ -1,15 +1,13 @@
 pub mod api {
     use http;
     use reqwest::header;
-    use serde::{Deserialize, Serialize};
-    use serde_json::from_str;
 
     mod user;
     use user::*;
     mod story;
     use story::*;
-    mod startOptions;
-    use startOptions::*;
+    mod start_options;
+    use start_options::*;
 
     const URI_USERINFO: &str = "https://api.aidungeon.io/users";
     const URI_REGISTERUSER: &str = "https://api.aidungeon.io/users/@me";
@@ -88,8 +86,6 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
-                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
-                .danger_accept_invalid_certs(true)
                 .build()?;
 
             // Send POST request with email field only
@@ -102,7 +98,7 @@ pub mod api {
                 })
                 .send()?;
 
-            let mut user: User;
+            let user: User;
             match does_user_exist_response.status() {
                 reqwest::StatusCode::NOT_ACCEPTABLE => {
                     // User already exists
@@ -141,12 +137,10 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
-                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
-                .danger_accept_invalid_certs(true)
                 .build()?;
 
             // Send PATCH request with specified access token and credentials
-            let mut user_register_reponse = client
+            let user_register_reponse = client
                 .patch(URI_REGISTERUSER)
                 .json(&UserAuth {
                     username: Some(username),
@@ -157,24 +151,22 @@ pub mod api {
 
             match user_register_reponse.status() {
                 reqwest::StatusCode::OK => {
-                    user = user_register_reponse.json()?;
+                    // Return prepared client with correct access token
+                    Ok(AIDungeon {
+                        http_client: client,
+                        story_id: None
+                    })
                 }
                 reqwest::StatusCode::BAD_REQUEST => {
-                    return Err(AIDungeonError::UsernameAlreadyExists);
+                    Err(AIDungeonError::UsernameAlreadyExists)
                 }
                 _ => {
-                    return Err(AIDungeonError::UnexpectedError(String::from(format!(
+                    Err(AIDungeonError::UnexpectedError(String::from(format!(
                         "Bad request status code while trying to register user: {}",
                         user_register_reponse.status()
-                    ))));
+                    ))))
                 }
             }
-
-            // Return prepared client with correct access token
-            Ok(AIDungeon {
-                http_client: client,
-                story_id: None
-            })
         }
 
         /// Login with existing user account
@@ -196,8 +188,6 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
-                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
-                .danger_accept_invalid_certs(true)
                 .build()?;
 
             // Send POST request with email field only
@@ -210,7 +200,7 @@ pub mod api {
                 })
                 .send()?;
 
-            let mut user: User;
+            let user: User;
             match does_user_exist_response.status() {
                 reqwest::StatusCode::OK => {
                     user = does_user_exist_response.json()?;
@@ -243,8 +233,6 @@ pub mod api {
             let client: reqwest::Client = reqwest::Client::builder()
                 .gzip(true)
                 .default_headers(headers)
-                .proxy(reqwest::Proxy::https("http://127.0.0.1:8080").unwrap())
-                .danger_accept_invalid_certs(true)
                 .build()?;
 
             Ok(AIDungeon {
@@ -264,7 +252,7 @@ pub mod api {
                 })
                 .send()?;
 
-            let mut response: Story;
+            let response: Story;
             match user_input_reply.status() {
                 reqwest::StatusCode::OK => {
                     response = user_input_reply.json()?;
@@ -293,7 +281,7 @@ pub mod api {
                 })
                 .send()?;
 
-            let mut response: Vec<StoryText>;
+            let response: Vec<StoryText>;
             match user_input_reply.status() {
                 reqwest::StatusCode::OK => {
                     response = user_input_reply.json()?;

@@ -1,5 +1,6 @@
-use aidungeon2_api::api::{AIDungeon, AIDungeonError};
+use aidungeon2_api::api::{AIDungeon};
 use std::io::{Stdin};
+use ansi_term::*;
 
 fn main() {
     println!("AI Dungeon 2");
@@ -27,9 +28,9 @@ fn main() {
         let mut story = game.start_custom_story(&prompt);
         loop {
             if let Ok(story) = story {
-                println!("{}", story.last().unwrap().value);
+                println!("{}", Colour::Green.paint(&story.last().unwrap().value));
             }else{
-                println!("{:?}", story);
+                println!("{}", Colour::Red.paint(format!("{:?}", story)));
             }
             let prompt = read_line(&mut stdin);
             if prompt == "/restart" {
