@@ -30,7 +30,7 @@ fn main() {
     // Start game, either with pre-made prompt (see AIDungeon::get_recommended_story()) or with custom prompt:
     let start_prompt = game_with_associated_account.start_story(Some("My super awesome custom prompt. I'm king Arthur and I'm looking for the Holy Grail."), "custom", None, None).unwrap();
     // or
-    let start_prompt = game_with_associated_account.start_story(None, "apocalyptic", Some("my-character-name"), "soldier").unwrap();
+    let start_prompt = game_with_associated_account.start_story(None, "apocalyptic", Some("my-character-name"), Some("soldier")).unwrap();
 
     // And now just send prompts
     let story = game_with_associated_account.send_reply("Stab sir Lancelot.").unwrap(); // Returns full story (all inputs and outputs)
