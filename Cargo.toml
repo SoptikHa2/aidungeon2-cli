@@ -1,12 +1,15 @@
 [package]
 name = "aidungeon2-cli"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Petr Šťastný <petr.stastny01@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/SoptikHa2/aidungeon2-cli"
 documentation = "https://github.com/SoptikHa2/aidungeon2-cli"
-description = "Library + binary executable to interact with AI Dungeons 2 mobile API"
-license = "MIT"
+readme = "README.md"
+keywords = ["AI", "AI Dungeon", "CLI", "game", "rpg"]
+categories = ["games", "command-line-utilities"]
+description = "Library + binary executable to interact with AI Dungeons 2 mobile API. Allows one to play (or build application) to play AI Dungeon 2. It uses mobile API to access and use remote servers, so no special HW is required."
+license-file = "LICENSE"
 
 [[bin]]
 name = "aidungeon2-cli"
