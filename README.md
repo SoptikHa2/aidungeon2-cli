@@ -33,6 +33,6 @@ fn main() {
     let start_prompt = game_with_associated_account.start_story(None, "apocalyptic", Some("my-character-name"), "soldier").unwrap();
 
     // And now just send prompts
-    let story = game_with_associated_account.send_reply("Stab sir Lancelot.").unwarp(); // Returns full story (all inputs and outputs)
+    let story = game_with_associated_account.send_reply("Stab sir Lancelot.").unwrap(); // Returns full story (all inputs and outputs)
 }
 ```
