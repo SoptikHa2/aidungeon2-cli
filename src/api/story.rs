@@ -8,7 +8,6 @@ pub struct Story {
     pub deletedAt: Option<String>,
     pub id: u64,
     // TODO: Unknown field "rating"
-
     /// List of input/outputs of this story
     pub story: Vec<StoryText>,
     pub storyPublicId: Option<String>,
@@ -29,7 +28,7 @@ pub struct StoryText {
     /// Text itself
     pub value: String,
     /// If the story ended, here will be the end. Known values: "lose" (probably also "win")
-    pub conclusion: Option<String>
+    pub conclusion: Option<String>,
 }
 
 /// User text input sent to API
