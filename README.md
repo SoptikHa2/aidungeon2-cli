@@ -1,3 +1,7 @@
+Note: due to recent breaking API changes, this client doesn't work. We're trying to fix this ASAP. Track progress: [#1](https://github.com/SoptikHa2/aidungeon2-cli/issues/1)
+
+If you know how to capture traffic (eg via mitmproxy), we would appreciate your help on this issue.
+
 # AI Dungeon 2 CLI
 
 This is CLI application (and library) for AI Dungeon 2 mobile API. Everything runs on AI Dungeon servers, so no special hardware is needed.
